@@ -481,7 +481,7 @@ int inject_remote_process(pid_t target_pid, const char *library_path, const char
 
     /* restore */
     ptrace_setregs(target_pid, &original_regs);
-    ptrace_detach(target_pid);
+    //ptrace_detach(target_pid);
     ret = 0;
 
 exit:
@@ -505,7 +505,7 @@ int main(int argc, char** argv) {
         return -1;
     }
     //target_pid = find_pid_of("/data/test");
-    inject_remote_process(target_pid, "/data/libhook.so", "hook_entry",  parameter, strlen(parameter));
+    inject_remote_process(target_pid, argv[2], "hook_entry",  parameter, strlen(parameter));
 
     if (-1 == mkdir("/data/senDroid", 0755)) {
         printf("Create directory failed.\n");
@@ -526,6 +526,19 @@ int main(int argc, char** argv) {
 
     mxmlSaveFile(tree, fp, MXML_NO_CALLBACK);
     fclose(fp);
+
+    if (NULL == (fp = fopen("/data/senDroid/camera_caller", "w"))) {
+        printf("Open file failed.\n");
+    }
+    fprintf(fp, "99999");
+    fclose(fp);
+
+    if (NULL == (fp = fopen("/data/senDroid/gps_caller", "w"))) {
+        printf("Open file failed.\n");
+    }
+    fprintf(fp, "99999");
+    fclose(fp);
+
 /*
     while (1) {
         cur_time = time(NULL);

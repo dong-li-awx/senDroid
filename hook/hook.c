@@ -334,6 +334,45 @@ enum {
 #define GYROSCOPE       6
 #define PRESSURE        7
 
+enum {
+    START_RUNNING_TRANSACTION = 1,
+    HANDLE_APPLICATION_CRASH_TRANSACTION,
+    START_ACTIVITY_TRANSACTION,
+    UNHANDLED_BACK_TRANSACTION,
+    OPEN_CONTENT_URI_TRANSACTION,
+    FINISH_ACTIVITY_TRANSACTION = 11,
+    REGISTER_RECEIVER_TRANSACTION,
+    UNREGISTER_RECEIVER_TRANSACTION,
+    BROADCAST_INTENT_TRANSACTION,
+    UNBROADCAST_INTENT_TRANSACTION,
+    FINISH_RECEIVER_TRANSACTION,
+    ATTACH_APPLICATION_TRANSACTION,
+    ACTIVITY_IDLE_TRANSACTION,
+    ACTIVITY_PAUSED_TRANSACTION,
+    ACTIVITY_STOPPED_TRANSACTION,
+    GET_CALLING_PACKAGE_TRANSACTION,
+    GET_CALLING_ACTIVITY_TRANSACTION,
+    GET_TASKS_TRANSACTION,
+    MOVE_TASK_TO_FRONT_TRANSACTION,
+    MOVE_TASK_TO_BACK_TRANSACTION,
+    MOVE_TASK_BACKWARDS_TRANSACTION,
+    GET_TASK_FOR_ACTIVITY_TRANSACTION,
+    REPORT_THUMBNAIL_TRANSACTION,
+    GET_CONTENT_PROVIDER_TRANSACTION,
+    PUBLISH_CONTENT_PROVIDERS_TRANSACTION,
+    REF_CONTENT_PROVIDER_TRANSACTION,
+    FINISH_SUB_ACTIVITY_TRANSACTION,
+    GET_RUNNING_SERVICE_CONTROL_PANEL_TRANSACTION,
+    START_SERVICE_TRANSACTION,
+    STOP_SERVICE_TRANSACTION,
+    BIND_SERVICE_TRANSACTION,
+    UNBIND_SERVICE_TRANSACTION,
+    PUBLISH_SERVICE_TRANSACTION,
+    ACTIVITY_RESUMED_TRANSACTION,
+    GOING_TO_SLEEP_TRANSACTION,
+    WAKING_UP_TRANSACTION,
+};
+
 const char * whitespace_cb(mxml_node_t *node, int where) {
     return "\n";
 }
@@ -533,7 +572,11 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
     int i, j;
     char c;
     char name[256];
+    char action[256];
     char handle, enabled, cb_flag;
+    FILE* fp;
+    int camera_caller_uid;
+    int gps_caller_uid;
 
     //LOGD("code: %d", txn->code);
     len = *(msg->data + 4);
@@ -548,12 +591,22 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
     //LOGD("name: %s", name);
 
     if (strcmp(name, "android.hardware.ICamera") == 0) {
+        fp = fopen("/data/senDroid/camera_caller", "r");
+        fscanf(fp, "%d", &camera_caller_uid);
+        fclose(fp);
+        LOGD("camera_caller_uid: %d", camera_caller_uid);
         switch (txn->code) {
             case START_PREVIEW:
                 LOGD("is_previewing: %d", cu.is_previewing);
                 cu.is_previewing = 1;
                 LOGD("is_previewing: %d", cu.is_previewing);
-                cu.uid = txn->sender_euid;
+                LOGD("camera_caller_uid: %d", camera_caller_uid);
+                if (camera_caller_uid == 99999) {
+                    cu.uid = txn->sender_euid;
+                } else {
+                    cu.uid = camera_caller_uid;
+                }
+                LOGD("cu.uid: %d", cu.uid);
                 gettimeofday(&cu.preview_start_time, 0);
                 LOGD("preview_start_time: %s.%06d", ctime(&cu.preview_start_time.tv_sec), cu.preview_start_time.tv_usec);
                 break;
@@ -562,14 +615,21 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
                     LOGD("is_previewing: %d", cu.is_previewing);
                     cu.is_previewing = 0;
                     LOGD("is_previewing: %d", cu.is_previewing);
-                    cu.uid = txn->sender_euid;
+                    fp = fopen("/data/senDroid/camera_caller", "w+");
+                    ftruncate(fp, 0);
+                    fprintf(fp, "99999");
+                    fclose(fp);
                     gettimeofday(&cu.preview_end_time, 0);
                     LOGD("preview_end_time: %s.%06d", ctime(&cu.preview_end_time.tv_sec), cu.preview_end_time.tv_usec);
                     update_xml(CAMERA_PREVIEW);
                 }
                 break;
             case TAKE_PICTURE:
-                cu.uid = txn->sender_euid;
+                if (camera_caller_uid == 0) {
+                    cu.uid = txn->sender_euid;
+                } else {
+                    cu.uid = camera_caller_uid;
+                }
                 gettimeofday(&cu.take_picture_time, 0);
                 LOGD("take_picture_time: %s.%06d", ctime(&cu.take_picture_time.tv_sec), cu.take_picture_time.tv_usec);
                 update_xml(CAMERA_TAKE_PICTURE);
@@ -579,7 +639,11 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
                 LOGD("is_recording: %d", cu.is_recording);
                 cu.is_recording = 1;
                 LOGD("is_recording: %d", cu.is_recording);
-                cu.uid = txn->sender_euid;
+                if (camera_caller_uid == 0) {
+                    cu.uid = txn->sender_euid;
+                } else {
+                    cu.uid = camera_caller_uid;
+                }
                 gettimeofday(&cu.record_start_time, 0);
                 LOGD("record_start_time: %s.%06d", ctime(&cu.record_start_time.tv_sec), cu.record_start_time.tv_usec);
                 break;
@@ -588,7 +652,6 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
                     LOGD("is_recording: %d", cu.is_recording);
                     cu.is_recording = 0;
                     LOGD("is_recording: %d", cu.is_recording);
-                    cu.uid = txn->sender_euid;
                     gettimeofday(&cu.record_end_time, 0);
                     LOGD("record_end_time: %s.%06d", ctime(&cu.record_end_time.tv_sec), cu.record_end_time.tv_usec);
                     update_xml(CAMERA_RECORD);
@@ -598,13 +661,19 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
             case DISCONNECT:
                 if (cu.is_previewing) {
                     cu.is_previewing = 0;
-                    cu.uid = txn->sender_euid;
+                    fp = fopen("/data/senDroid/camera_caller", "w+");
+                    ftruncate(fp, 0);
+                    fprintf(fp, "99999");
+                    fclose(fp);
                     gettimeofday(&cu.preview_end_time, 0);
                     LOGD("preview_end_time: %s.%06d", ctime(&cu.preview_end_time.tv_sec), cu.preview_end_time.tv_usec);
                     update_xml(CAMERA_PREVIEW);
                 } else if (cu.is_recording) {
                     cu.is_recording = 0;
-                    cu.uid = txn->sender_euid;
+                    fp = fopen("/data/senDroid/camera_caller", "w+");
+                    ftruncate(fp, 0);
+                    fprintf(fp, "99999");
+                    fclose(fp);
                     gettimeofday(&cu.record_end_time, 0);
                     LOGD("record_end_time: %s.%06d", ctime(&cu.record_end_time.tv_sec), cu.record_end_time.tv_usec);
                     update_xml(CAMERA_RECORD);
@@ -655,7 +724,11 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
                 }
                 if (media_recorder_video) {
                     cu.is_recording = 1;
-                    cu.uid = txn->sender_euid;
+                    if (camera_caller_uid == 0) {
+                        cu.uid = txn->sender_euid;
+                    } else {
+                        cu.uid = camera_caller_uid;
+                    }
                     gettimeofday(&cu.record_start_time, 0);
                     LOGD("record_start_time: %s.%06d", ctime(&cu.record_start_time.tv_sec), cu.record_start_time.tv_usec);
                 }
@@ -671,7 +744,10 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
                 }
                 if (cu.is_recording) {
                     cu.is_recording = 0;
-                    cu.uid = txn->sender_euid;
+                    fp = fopen("/data/senDroid/camera_caller", "w+");
+                    ftruncate(fp, 0);
+                    fprintf(fp, "99999");
+                    fclose(fp);
                     gettimeofday(&cu.record_end_time, 0);
                     LOGD("record_end_time: %s.%06d", ctime(&cu.record_end_time.tv_sec), cu.record_end_time.tv_usec);
                     update_xml(CAMERA_RECORD);
@@ -688,14 +764,26 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
                 break;
         }
     } else if (strcmp(name, "android.location.ILocationManager") == 0) {
+        fp = fopen("/data/senDroid/gps_caller", "r");
+        fscanf(fp, "%d", &gps_caller_uid);
+        fclose(fp);
+        LOGD("gps_caller_uid: %d", gps_caller_uid);
         switch (txn->code) {
             case REQUEST_LOCATION_UPDATES:
-                gu.uid = txn->sender_euid;
+                if (gps_caller_uid == 99999) {
+                    gu.uid = txn->sender_euid;
+                } else {
+                    gu.uid = gps_caller_uid;
+                }
                 gu.gps_count = 0;
                 gettimeofday(&gu.gps_start_time, 0);
                 LOGD("gps_start_time: %s.%06d", ctime(&gu.gps_start_time.tv_sec), gu.gps_start_time.tv_usec);
                 break;
             case REMOVE_UPDATES:
+                fp = fopen("/data/senDroid/gps_caller", "w+");
+                ftruncate(fp, 0);
+                fprintf(fp, "99999");
+                fclose(fp);
                 gettimeofday(&gu.gps_end_time, 0);
                 LOGD("gps_end_time: %s.%06d", ctime(&gu.gps_end_time.tv_sec), gu.gps_end_time.tv_usec);
                 update_xml(GPS);
@@ -789,6 +877,111 @@ int handler(struct binder_txn *txn, struct binder_io *msg)
             default:
                 break;
         }
+    } else if (strcmp(name, "android.app.IActivityManager") == 0) {
+        //LOGD("code: %d", txn->code);
+        switch (txn->code) {
+            case START_ACTIVITY_TRANSACTION:
+                //LOGD("Start activity, data_avail: %d, offs_avail: %d", msg->data_avail, msg->offs_avail);
+                // i = 0;
+                // while (i < msg->data_avail) {
+                //     if (*(msg->data + i) != 0) {
+                //         LOGD("%d: %c", i, *(msg->data + i));
+                //     }
+                //     i ++;
+                // }
+                i = 84;
+                len = *(msg->data + i);
+                i += 4;
+                j = 0;
+                while (len) {
+                    action[j++] = *(msg->data + i);
+                    i += 2;
+                    len --;
+                }
+                action[j] = '\0';
+                LOGD("Action: %s, uid: %d", action, txn->sender_euid);
+
+                i = 160;
+                len = *(msg->data + i);
+                i += 4;
+                j = 0;
+                while (len) {
+                    name[j++] = *(msg->data + i);
+                    i += 2;
+                    len --;
+                }
+                name[j] = '\0';
+                LOGD("StartActivity: %s, uid: %d", name, txn->sender_euid);
+
+                if (strcmp(name, "com.google.android.gallery3d") == 0 ||
+                strcmp(action, "android.media.action.IMAGE_CAPTURE") == 0 ||
+                strcmp(action, "android.media.action.VIDEO_CAPTURE") == 0) {
+                    fp = fopen("/data/senDroid/camera_caller", "w+");
+                    ftruncate(fp, 0);
+                    fprintf(fp, "%d", txn->sender_euid);
+                    fclose(fp);
+                }
+                break;
+            case FINISH_ACTIVITY_TRANSACTION:
+                LOGD("FinishActivity, uid: %d", txn->sender_euid);
+                break;
+            case START_SERVICE_TRANSACTION:
+                i = 84;
+                if (*(msg->data + i) == 255) {
+                    i += 20;
+                }
+                len = *(msg->data + i);
+                i += 4;
+                j = 0;
+                while (len) {
+                    name[j++] = *(msg->data + i);
+                    i += 2;
+                    len --;
+                }
+                name[j] = '\0';
+                //LOGD("StartService: %s, uid: %d", name, txn->sender_euid);
+                break;
+            case STOP_SERVICE_TRANSACTION:
+                i = 160;
+                len = *(msg->data + i);
+                i += 4;
+                j = 0;
+                while (len) {
+                    name[j++] = *(msg->data + i);
+                    i += 2;
+                    len --;
+                }
+                name[j] = '\0';
+                //LOGD("StopService: %s, uid: %d", name, txn->sender_euid);
+                break;
+            case BIND_SERVICE_TRANSACTION:
+                i = 100;
+                if (*(msg->data + i) == 255) {
+                    i += 20;
+                }
+                len = *(msg->data + i);
+                i += 4;
+                j = 0;
+                while (len) {
+                    name[j++] = *(msg->data + i);
+                    i += 2;
+                    len --;
+                }
+                name[j] = '\0';
+                //LOGD("BindService: %s, uid: %d", name, txn->sender_euid);
+                if (strcmp(name, "com.google.android.location.internal.GoogleLocationManagerService.START") == 0) {
+                    fp = fopen("/data/senDroid/gps_caller", "w+");
+                    ftruncate(fp, 0);
+                    fprintf(fp, "%d", txn->sender_euid);
+                    fclose(fp);
+                }
+                break;
+            case UNBIND_SERVICE_TRANSACTION:
+                //LOGD("UnbindService, uid: %d", txn->sender_euid);
+                break;
+            default:
+                break;
+        }
     }
 
     return 0;
@@ -820,68 +1013,68 @@ int my_ioctl (int __fd, unsigned long int __request, void* arg) {
     switch (_IOC_TYPE(__request)) {
 
         case 'V':
-            LOGD("nr: %d", _IOC_NR(__request));
+            //LOGD("nr: %d", _IOC_NR(__request));
             //get_file_info_from_fd(__fd);
             switch (__request) {
                 case VIDIOC_QUERYCAP:
-                    LOGD("Query capability");
-                    result = ioctl(__fd, __request, arg);
-                    cap = (struct v4l2_capability*) arg;
-                    LOGD("  driver: %s\n", cap->driver);
-                    LOGD("  card: %s\n", cap->card);
-                    LOGD("  bus_info: %s\n", cap->bus_info);
-                    LOGD("  version: %08X\n", cap->version);
-                    LOGD("  capabilities: %08X\n", cap->capabilities);
-                    return result;
+                    // LOGD("Query capability");
+                    // result = ioctl(__fd, __request, arg);
+                    // cap = (struct v4l2_capability*) arg;
+                    // LOGD("  driver: %s\n", cap->driver);
+                    // LOGD("  card: %s\n", cap->card);
+                    // LOGD("  bus_info: %s\n", cap->bus_info);
+                    // LOGD("  version: %08X\n", cap->version);
+                    // LOGD("  capabilities: %08X\n", cap->capabilities);
+                    // return result;
                     break;
                 case VIDIOC_ENUM_FMT:
-                    LOGD("Enum format");
+                    // LOGD("Enum format");
                     break;
                 case VIDIOC_G_FMT:
-                    LOGD("Get format");
-                    result = ioctl(__fd, __request, arg);
-                    fmt = (struct v4l2_format*) arg;
-                    LOGD("  type: %d\n", fmt->type);
-                    LOGD("  width: %d\n", fmt->fmt.pix.width);
-                    LOGD("  height: %d\n", fmt->fmt.pix.height);
-                    char fmtstr[8];
-                    memset(fmtstr, 0, 8);
-                    memcpy(fmtstr, &fmt->fmt.pix.pixelformat, 4);
-                    LOGD("  pixelformat: %s\n", fmtstr);
-                    LOGD("  field: %d\n", fmt->fmt.pix.field);
-                    LOGD("  bytesperline: %d\n", fmt->fmt.pix.bytesperline);
-                    LOGD("  sizeimage: %d\n", fmt->fmt.pix.sizeimage);
-                    LOGD("  colorspace: %d\n", fmt->fmt.pix.colorspace);
-                    LOGD("  priv: %d\n", fmt->fmt.pix.priv);
-                    LOGD("  raw_date: %s\n", fmt->fmt.raw_data);
-                    return result;
+                    // LOGD("Get format");
+                    // result = ioctl(__fd, __request, arg);
+                    // fmt = (struct v4l2_format*) arg;
+                    // LOGD("  type: %d\n", fmt->type);
+                    // LOGD("  width: %d\n", fmt->fmt.pix.width);
+                    // LOGD("  height: %d\n", fmt->fmt.pix.height);
+                    // char fmtstr[8];
+                    // memset(fmtstr, 0, 8);
+                    // memcpy(fmtstr, &fmt->fmt.pix.pixelformat, 4);
+                    // LOGD("  pixelformat: %s\n", fmtstr);
+                    // LOGD("  field: %d\n", fmt->fmt.pix.field);
+                    // LOGD("  bytesperline: %d\n", fmt->fmt.pix.bytesperline);
+                    // LOGD("  sizeimage: %d\n", fmt->fmt.pix.sizeimage);
+                    // LOGD("  colorspace: %d\n", fmt->fmt.pix.colorspace);
+                    // LOGD("  priv: %d\n", fmt->fmt.pix.priv);
+                    // LOGD("  raw_date: %s\n", fmt->fmt.raw_data);
+                    // return result;
                     break;
                 case VIDIOC_S_FMT:
-                    LOGD("Set format:");
+                    // LOGD("Set format:");
                     break;
                 case VIDIOC_REQBUFS:
-                    LOGD("Require buffers");
-                    reqbuf = (struct v4l2_requestbuffers*) arg;
-                    LOGD("  type:%d, memory:%d, count:%d", reqbuf->type, reqbuf->memory, reqbuf->count);
+                    // LOGD("Require buffers");
+                    // reqbuf = (struct v4l2_requestbuffers*) arg;
+                    // LOGD("  type:%d, memory:%d, count:%d", reqbuf->type, reqbuf->memory, reqbuf->count);
                     break;
                 case VIDIOC_QUERYBUF:
-                    LOGD("Query buffer");
+                    // LOGD("Query buffer");
                     break;
                 case VIDIOC_G_FBUF:
-                    LOGD("Get frame buffer");
+                    // LOGD("Get frame buffer");
                     break;
                 case VIDIOC_S_FBUF:
-                    LOGD("Set frame buffer");
+                    // LOGD("Set frame buffer");
                     break;
                 case VIDIOC_OVERLAY:
-                    LOGD("Overlay");
+                    // LOGD("Overlay");
                     break;
                 case VIDIOC_QBUF:
                     //buffer = (struct v4l2_buffer*) arg;
                     //LOGD("Queue buffer [type:%d, offset:%x, length:%d]", buffer->type, buffer->m.offset, buffer->length);
                     break;
                 case VIDIOC_DQBUF:
-                    LOGD("Dequeue buffer");
+                    // LOGD("Dequeue buffer");
                     result = ioctl(__fd, __request, arg);
                     buffer = (struct v4l2_buffer*) arg;
                     //LOGD("sizeof(struct v4l2_buffer): %x", sizeof(struct v4l2_buffer));
@@ -889,14 +1082,14 @@ int my_ioctl (int __fd, unsigned long int __request, void* arg) {
                     if (buffer->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
                         for (i = 0; i < buffer->length; i ++) {
                             plane = buffer->m.planes + i;
-                            LOGD("Dequeue buffer %d: plane[%d][type:%d, memory:%d, bytesused:%d, length:%d, mem_offset: %x, userptr:%x, fd: %x, data_offset:%x]", buffer->index, i, buffer->type, buffer->memory, plane->bytesused, plane->length, plane->m.mem_offset, plane->m.userptr, plane->m.fd, plane->data_offset);
+                            //LOGD("Dequeue buffer %d: plane[%d][type:%d, memory:%d, bytesused:%d, length:%d, mem_offset: %x, userptr:%x, fd: %x, data_offset:%x]", buffer->index, i, buffer->type, buffer->memory, plane->bytesused, plane->length, plane->m.mem_offset, plane->m.userptr, plane->m.fd, plane->data_offset);
                             cu.video_size += plane->bytesused - plane->data_offset;
                             cu.preview_frame_count ++;
                             LOGD("video_size: %d", cu.video_size);
                             LOGD("preview_frame_count: %d", cu.preview_frame_count);
                         }
                     } else if (buffer->type == V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-                        LOGD("Dequeue buffer %d [type:%d, memory:%d, bytesused:%d, length:%d, userptr:%x, offset:%x]", buffer->index, buffer->type, buffer->memory, buffer->bytesused, buffer->length, buffer->m.userptr, buffer->m.offset);
+                        //LOGD("Dequeue buffer %d [type:%d, memory:%d, bytesused:%d, length:%d, userptr:%x, offset:%x]", buffer->index, buffer->type, buffer->memory, buffer->bytesused, buffer->length, buffer->m.userptr, buffer->m.offset);
                         cu.video_size += buffer->bytesused;
                         cu.preview_frame_count ++;
                         LOGD("video_size: %d", cu.video_size);
@@ -905,46 +1098,46 @@ int my_ioctl (int __fd, unsigned long int __request, void* arg) {
                     return result;
                     break;
                 case VIDIOC_STREAMON:
-                    LOGD("Stream on");
+                    // LOGD("Stream on");
                     break;
                 case VIDIOC_STREAMOFF:
-                    LOGD("Stream off");
+                    // LOGD("Stream off");
                     break;
                 case VIDIOC_G_PARM:
-                    LOGD("VIDIOC_G_PARM");
+                    // LOGD("VIDIOC_G_PARM");
                     break;
                 case VIDIOC_S_PARM:
-                    LOGD("VIDIOC_S_PARM");
-                    parm = (struct v4l2_streamparm*) arg;
-                    LOGD("  type:%d", parm->type);
-                    LOGD("  captureparm:");
-                    LOGD("      capability:%d, capturemode:%d, extendedmode:%d, readbuffers:%d", parm->parm.capture.capability, parm->parm.capture.capturemode, parm->parm.capture.extendedmode, parm->parm.capture.readbuffers);
+                    // LOGD("VIDIOC_S_PARM");
+                    // parm = (struct v4l2_streamparm*) arg;
+                    // LOGD("  type:%d", parm->type);
+                    // LOGD("  captureparm:");
+                    // LOGD("      capability:%d, capturemode:%d, extendedmode:%d, readbuffers:%d", parm->parm.capture.capability, parm->parm.capture.capturemode, parm->parm.capture.extendedmode, parm->parm.capture.readbuffers);
                     break;
                 case VIDIOC_G_STD:
-                    LOGD("VIDIOC_G_STD");
+                    // LOGD("VIDIOC_G_STD");
                     break;
                 case VIDIOC_S_STD:
-                    LOGD("VIDIOC_S_STD");
+                    // LOGD("VIDIOC_S_STD");
                     break;
                 case VIDIOC_ENUMSTD:
-                    LOGD("VIDIOC_ENUMSTD");
+                    // LOGD("VIDIOC_ENUMSTD");
                     break;
                 case VIDIOC_ENUMINPUT:
-                    LOGD("VIDIOC_ENUMINPUT");
+                    // LOGD("VIDIOC_ENUMINPUT");
                     break;
                 case VIDIOC_G_CTRL:
-                    LOGD("VIDIOC_G_CTRL");
+                    // LOGD("VIDIOC_G_CTRL");
                     break;
                 case VIDIOC_S_CTRL:
-                    LOGD("VIDIOC_S_CTRL");
-                    ctl = (struct v4l2_control*) arg;
-                    LOGD("  id:%d, value:%d", ctl->id, ctl->value);
+                    // LOGD("VIDIOC_S_CTRL");
+                    // ctl = (struct v4l2_control*) arg;
+                    // LOGD("  id:%d, value:%d", ctl->id, ctl->value);
                     break;
                 case VIDIOC_G_PRIORITY:
-                    LOGD("VIDIOC_G_PRIORITY");
+                    // LOGD("VIDIOC_G_PRIORITY");
                     break;
                 case VIDIOC_S_PRIORITY:
-                    LOGD("VIDIOC_S_PRIORITY");
+                    // LOGD("VIDIOC_S_PRIORITY");
                     break;
                 default:
                     break;
@@ -1583,11 +1776,15 @@ int update(char * a) {
 }
 
 int hook_entry(char * a){
+    FILE* fp;
     LOGD("Hook success, pid=%d, uid=%d, euid=%d, gid=%d, egid=%d\n", getpid(), getuid(), geteuid(), getgid(), getegid());
     LOGD("Hook %s\n", a);
     hook_func_str = a;
     LOGD("readMemMap: %d", readMemMap());
     LOGD("after read before hook");
+    // fp = fopen("/data/senDroid/camera_caller", "w+");
+    // fprintf(fp, "99999");
+    // fclose(fp);
     hookAll();
     return 0;
 }
