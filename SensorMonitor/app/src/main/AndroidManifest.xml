@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.fudan.sensormonitor" >
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme" >
+        <activity
+            android:name=".SensorListActivity"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".UsageSummaryActivity"
+            android:label="@string/title_sensor_detail"
+            android:parentActivityName=".SensorListActivity"
+            android:theme="@style/AppTheme.NoActionBar" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".SensorListActivity" />
+        </activity>
+        <activity
+            android:name=".StandardSensorListActivity"
+            android:label="@string/title_standard_sensor_list"
+            android:parentActivityName=".SensorListActivity"
+            android:theme="@style/AppTheme.NoActionBar" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".StandardSensorListActivity" />
+        </activity>
+        <activity
+            android:name=".StandardSensorUsageActivity"
+            android:label="@string/title_standard_sensor_detail"
+            android:parentActivityName=".StandardSensorListActivity"
+            android:theme="@style/AppTheme.NoActionBar" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".StandardSensorUsageActivity" />
+        </activity>
+        <activity
+            android:name=".CameraListActivity"
+            android:label="@string/title_camera_list"
+            android:parentActivityName=".SensorListActivity"
+            android:theme="@style/AppTheme.NoActionBar" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".StandardSensorListActivity" />
+        </activity>
+        <activity
+            android:name=".CameraUsageActivity"
+            android:label="@string/title_camera_detail"
+            android:parentActivityName=".CameraListActivity"
+            android:theme="@style/AppTheme.NoActionBar" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".CameraUsageActivity" />
+        </activity>
+    </application>
+
+</manifest>

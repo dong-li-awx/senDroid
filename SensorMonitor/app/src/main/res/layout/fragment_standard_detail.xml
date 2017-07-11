@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+
+    <lecho.lib.hellocharts.view.LineChartView
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/standard_line_chart"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        tools:context=".StandardSensorUsageFragment"/>
+
+    <ListView
+        android:id="@+id/standard_listview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="20dip"/>
+</LinearLayout>
+
+
+

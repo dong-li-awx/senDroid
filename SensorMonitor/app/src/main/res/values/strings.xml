@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">SensorMonitor</string>
+    <string name="title_sensor_detail">Sensor Detail</string>
+    <string name="title_camera_list">Camera usage list</string>
+    <string name="title_standard_sensor_detail">Standard Sensor Detail</string>
+    <string name="title_camera_detail">Camera Detail</string>
+    <string name="item_gps">GPS</string>
+    <string name="item_camera">Camera</string>
+    <string name="item_microphone">Microphone</string>
+    <string name="item_standard_sensor">Standard Sensor</string>
+    <string name="item_accelerometer">Accelerometer</string>
+    <string name="item_gyroscope">Gyroscope</string>
+    <string name="item_light">Light</string>
+    <string name="item_pressure">Pressure</string>
+    <string name="item_magnetic">Magnetic</string>
+    <string name="item_proximity">Proximity</string>
+    <string name="item_preview">Preview</string>
+    <string name="item_take_picture">Take picture</string>
+    <string name="item_record">Record</string>
+    <string name="chart_text">Application Usage Details  </string>
+    <string name="title_standard_sensor_list">Standard Sensor Type </string>
+</resources>

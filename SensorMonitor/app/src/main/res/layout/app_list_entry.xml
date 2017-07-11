@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="64sp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    >
+    <ImageView
+        android:id="@+id/app_list_entry_icon"
+        android:layout_height="32sp"
+        android:layout_width="32sp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentBottom="true"
+        android:paddingRight="2dp"
+        />
+
+    <TextView
+        android:id="@+id/app_list_entry_title"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@id/app_list_entry_icon"
+        android:textSize="18sp"
+        android:paddingBottom="4dp"
+        />
+
+    <TextView
+        android:id="@+id/app_list_entry_subtitle"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_below="@id/app_list_entry_title"
+        android:layout_toRightOf="@id/app_list_entry_icon"
+        android:textSize="12sp"
+        />
+
+    <ImageView
+        android:id="@+id/app_list_entry_color"
+        android:layout_width="50sp"
+        android:layout_height="20sp"
+        android:layout_alignParentRight="true"
+        android:textSize="12sp"
+        android:layout_below="@+id/app_list_entry_title" />
+</RelativeLayout>
+
